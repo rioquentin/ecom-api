@@ -30,40 +30,39 @@ export class PaymentsService {
         price_data: {
           currency: 'eur',
           product_data: { name: item.product.name },
-          unit_amount: Math.round(item.price * 100),
+          unit_amount: Math.round(item.price * 100), // Stripe attend des centimes
         },
         quantity: item.quantity,
       })),
       mode: 'payment',
       success_url: `${process.env.FRONTEND_URL}/success?orderId=${orderId}`,
       cancel_url: `${process.env.FRONTEND_URL}/cancel`,
-      metadata: { orderId },
+      metadata: { orderId }, // récupéré dans le webhook pour faire le lien avec la commande
     });
 
     return { url: session.url };
   }
 
   async handleWebhook(payload: Buffer, signature: string) {
-  let event: any;
+    let event: any;
 
-  try {
-    event = this.stripe.webhooks.constructEvent(
-      payload,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!,
-    );
-  } catch {
-    throw new BadRequestException('Invalid webhook signature');
+    // On vérifie la signature avec le raw body — c'est pour ça que rawBody: true est activé dans main.ts
+    try {
+      event = this.stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        process.env.STRIPE_WEBHOOK_SECRET!,
+      );
+    } catch {
+      throw new BadRequestException('Invalid webhook signature');
+    }
+
+    if (event.type === 'checkout.session.completed') {
+      // TODO: récupérer event.data.object.metadata.orderId, marquer la commande comme payée et envoyer l'email de confirmation
+    }
+
+    return { received: true };
   }
-
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const orderId = session.metadata?.orderId;
-    // ... reste inchangé
-  }
-
-  return { received: true };
-}
 
   private async sendConfirmationEmail(order: any) {
     const itemsList = order.items

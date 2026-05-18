@@ -35,6 +35,7 @@ export class AuthService {
   async signTokens(userId: string, email: string, role: string) {
     const payload = { sub: userId, email, role };
 
+    // Access token court (15 min) — refresh token long (7 jours)
     const accessToken = await this.jwt.signAsync(payload, {
       secret: process.env.JWT_SECRET,
       expiresIn: '15m',
@@ -45,6 +46,7 @@ export class AuthService {
       expiresIn: '7d',
     });
 
+    // On stocke le refresh token hashé pour pouvoir l'invalider côté serveur si besoin
     await this.prisma.user.update({
       where: { id: userId },
       data: { refreshToken: await bcrypt.hash(refreshToken, 10) },

@@ -7,7 +7,7 @@ export class OrdersService {
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateOrderDto) {
-    // Vérifie stock et calcule le total
+    // On vérifie le stock de chaque article et on calcule le total avant de toucher la base
     let total = 0;
     const enrichedItems: { product: any; quantity: number; price: number }[] = [];
 
@@ -25,7 +25,8 @@ export class OrdersService {
       enrichedItems.push({ product, quantity: item.quantity, price: product.price });
     }
 
-    // Crée la commande + décrémente le stock en transaction
+    // Création de la commande et décrémentation du stock dans la même transaction
+    // pour éviter qu'une erreur en cours de route laisse le stock incohérent
     const order = await this.prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
         data: {
@@ -56,7 +57,7 @@ export class OrdersService {
   }
 
   async findAll(userId: string, role: string) {
-    // Admin voit toutes les commandes, customer voit les siennes
+    // Un admin voit toutes les commandes, un client ne voit que les siennes
     return this.prisma.order.findMany({
       where: role === 'ADMIN' ? undefined : { userId },
       include: { items: { include: { product: true } } },
@@ -71,6 +72,7 @@ export class OrdersService {
     });
 
     if (!order) throw new NotFoundException('Order not found');
+    // On renvoie 404 plutôt que 403 pour ne pas révéler qu'une commande existe
     if (role !== 'ADMIN' && order.userId !== userId) {
       throw new NotFoundException('Order not found');
     }

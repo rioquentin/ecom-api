@@ -4,13 +4,14 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
+  // rawBody: true est nécessaire pour que Stripe puisse vérifier la signature du webhook
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   const config = new DocumentBuilder()
     .setTitle('Ecom API')
-    .setDescription('Production-ready e-commerce REST API')
+    .setDescription('API REST e-commerce — auth, produits, commandes, paiements Stripe')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
